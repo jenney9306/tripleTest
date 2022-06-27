@@ -23,6 +23,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation group: 'io.springfox', name: 'springfox-boot-starter', version: '3.0.0'
     implementation 'android.arch.persistence.room:runtime:1.1.1'
+	implementation 'mysql:mysql-connector-java'
     annotationProcessor 'android.arch.persistence.room:compiler:1.1.1'
     compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
