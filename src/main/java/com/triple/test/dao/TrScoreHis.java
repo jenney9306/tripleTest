@@ -11,7 +11,7 @@ import javax.persistence.*;
 @Setter
 @Entity
 @NoArgsConstructor
-@Table(name = "TR_SCORE_HIS")
+@Table(name = "TR_SCORE_HIS", indexes = @Index(name = "iUserId", columnList = "USER_ID"))
 public class TrScoreHis extends CommonDao{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

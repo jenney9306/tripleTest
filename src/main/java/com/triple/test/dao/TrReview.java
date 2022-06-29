@@ -22,9 +22,6 @@ public class TrReview extends CommonDao{
     @Column(name = "CONTENTS",  length = 300, nullable = false)
     private String contents;
 
-//    @Column(name = "SCORE", nullable = false)
-//    private Integer score;
-
     @Column(name = "USER_ID", length = 36, nullable = false)
     private String userId;
 
@@ -39,6 +36,4 @@ public class TrReview extends CommonDao{
     @Column(name = "FRST_PLACE", length = 1, nullable = false)
     private Boolean frstPlace;
 
-//    @Column(name = "ATTACHED_PHOTO_IDS", nullable = false)
-//    private List<String> attachedPhotoIds;
 }

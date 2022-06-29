@@ -5,7 +5,6 @@ import lombok.Setter;
 import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
-import java.util.List;
 
 @Getter
 @Setter
@@ -19,6 +18,9 @@ public class TrAttach {
 
     @Column(name = "REVIEW_ID", length = 36, nullable = false)
     private String reviewId;
+
+    @Column(name = "USER_ID", length = 36, nullable = false)
+    private String userId;
 
     @Column(name = "ATTACHED_ID",  length = 36, nullable = false)
     private String attachedId;
