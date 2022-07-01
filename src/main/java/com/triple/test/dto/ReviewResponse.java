@@ -10,21 +10,9 @@ import lombok.ToString;
 @Setter
 @ToString
 @NoArgsConstructor
-public class ReviewRequest {
-    @ApiModelProperty(notes   = "타입",            example = "REVIEW")
-    private String type;
-
-    @ApiModelProperty(notes   = "액션",            example = "ADD")
-    private String action;
-
+public class ReviewResponse {
     @ApiModelProperty(notes   = "리뷰 번호",            example = "240a0658-dc5f-4878-9381-ebb7b2667772")
     private String reviewId;
-
-    @ApiModelProperty(notes   = "리뷰 내용",            example = "좋아요")
-    private String content;
-
-    @ApiModelProperty(notes   = "첨부파일 이미지")
-    private String[] attachedPhotoIds;
 
     @ApiModelProperty(notes   = "작성자 아이디",            example = "3ede0ef2-92b7-4817-a5f3-0c575361f745")
     private String userId;

@@ -5,6 +5,7 @@ import com.triple.test.common.MessageException;
 import com.triple.test.dao.*;
 import com.triple.test.dto.CommResponse;
 import com.triple.test.dto.ReviewRequest;
+import com.triple.test.dto.ReviewResponse;
 import com.triple.test.dto.UserScore;
 import com.triple.test.orm.attach.AttachRepository;
 import com.triple.test.orm.place.PlaceRepository;
@@ -36,11 +37,11 @@ public class ReviewService {
     private final static Integer FRST_SCORE = 1;
 
 
-    public CommResponse<String> events(ReviewRequest reviewRequest) {
-        CommResponse<String> result = new CommResponse<>();
+    public CommResponse<ReviewResponse> events(ReviewRequest reviewRequest) {
+        CommResponse<ReviewResponse> result = new CommResponse<>();
         if(!reviewRequest.getType().equals("REVIEW")){
             result.setReturnCode(MessageException.VALIDATION_FAIL_CODE);
-            result.setMessage("not review");
+            result.setMessage("type is not review");
             return result;
         }
         try {
@@ -73,7 +74,7 @@ public class ReviewService {
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    private CommResponse<String> addReview(ReviewRequest rvReq, CommResponse<String> result) {
+    private CommResponse<ReviewResponse> addReview(ReviewRequest rvReq, CommResponse<ReviewResponse> result) {
 
         Optional<TrReview> optional = reviewRepository.findByUserIdAndPlaceIdAndUseYn(rvReq.getUserId(), rvReq.getPlaceId(), Boolean.TRUE);
         if(optional.isPresent()){
@@ -83,15 +84,8 @@ public class ReviewService {
         }
 
         boolean frstPlace = false;
-        List<TrScoreHis> scoreHisList = new ArrayList<>();
+        int newScore = 0;
 
-        // 점수 계산
-        if( rvReq.getContent().length() > 0 ){
-            scoreHisList.add(mapperToTrScoreHis(rvReq, CONTENT_SCORE, "content"));
-        }
-        if( rvReq.getAttachedPhotoIds().length > 0 ){
-            scoreHisList.add(mapperToTrScoreHis(rvReq, ATACH_SCORE, "attach"));
-        }
         synchronized(this) {
             if (!placeRepository.findById(rvReq.getPlaceId()).isPresent()) {
                 // 첫 장소 첫 리뷰일 경우
@@ -99,13 +93,14 @@ public class ReviewService {
                 trPlace.setPlaceId(rvReq.getPlaceId());
                 placeRepository.save(trPlace);
 
-                scoreHisList.add(mapperToTrScoreHis(rvReq, FRST_SCORE, "bonus"));
                 frstPlace = true;
+
+                // 첫 장소 보너스는 선 저장
+                newScore += FRST_SCORE;
+                scoreRepository.save(mapperToTrScoreHis(rvReq, FRST_SCORE, "BONUS"));
             }
         }
-
-
-        scoreRepository.saveAll(scoreHisList);
+        newScore += scoreAdd(rvReq);
 
         // 리뷰 저장
         TrReview trReview = new TrReview();
@@ -141,15 +136,19 @@ public class ReviewService {
         TrUser trUser = new TrUser();
         if(user.isPresent()){
             trUser = user.get();
-            trUser.setScoreSum(trUser.getScoreSum() + scoreHisList.size());
+            trUser.setScoreSum(trUser.getScoreSum() + newScore);
         } else {
             trUser.setUserId(rvReq.getUserId());
-            trUser.setScoreSum(scoreHisList.size());
+            trUser.setScoreSum(newScore);
         }
         userRepository.save(trUser);
 
         result.setMessage("리뷰 등록 성공");
-        result.setData(rvReq.getReviewId());
+        ReviewResponse res = new ReviewResponse();
+        res.setReviewId(rvReq.getReviewId());
+        res.setUserId(rvReq.getUserId());
+        res.setPlaceId(rvReq.getPlaceId());
+        result.setData(res);
         result.setReturnCode(MessageException.SUCCESS_CODE);
         return result;
     }
@@ -165,7 +164,7 @@ public class ReviewService {
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    private CommResponse<String> modReview(ReviewRequest rvReq, CommResponse<String> result) {
+    private CommResponse<ReviewResponse> modReview(ReviewRequest rvReq, CommResponse<ReviewResponse> result) {
 
         Optional<TrReview> optional = reviewRepository.findByUserIdAndPlaceIdAndUseYn(rvReq.getUserId(), rvReq.getPlaceId(), Boolean.TRUE);
         if(!optional.isPresent()){
@@ -178,19 +177,10 @@ public class ReviewService {
         TrReview trReview = optional.get();
         int oldScore = 0;
         if(trReview.getContents().length() > 0) oldScore++;
-        if(attachList.size() > 1) oldScore++;
+        if(attachList.size() > 0) oldScore++;
+        scoreRepository.save(mapperToTrScoreHis(rvReq, oldScore, "DELETE"));
 
-        int newScore = 0;
-        List<TrScoreHis> scoreHisList = new ArrayList<>();
-        if(rvReq.getContent().length() > 0){
-            newScore++;
-            scoreHisList.add(mapperToTrScoreHis(rvReq, CONTENT_SCORE, "mod"));
-        }
-        if(rvReq.getAttachedPhotoIds().length > 0){
-            newScore++;
-            scoreHisList.add(mapperToTrScoreHis(rvReq, ATACH_SCORE, "mod"));
-        }
-        scoreRepository.saveAll(scoreHisList);
+        int newScore = scoreAdd(rvReq);
 
         Optional<TrUser> maybe = userRepository.findById(rvReq.getUserId());
         TrUser user = maybe.get();
@@ -206,14 +196,8 @@ public class ReviewService {
         reviewRepository.save(trReview);
 
         // 기본 첨부파일 첨부파일 사용 안함으로 변경
-        if(!CollectionUtils.isEmpty(attachList)) {
-            attachList.stream()
-                    .map(attach -> {
-                        attach.setUseYn(Boolean.FALSE);
-                        return attach;
-                    })
-                    .collect(Collectors.toList());
-            attachRepository.saveAll(attachList);
+        if(!CollectionUtils.isEmpty(attachList)){
+            deleteAttachList(attachList);
         }
 
         // 신규 첨부파일 추가
@@ -233,7 +217,11 @@ public class ReviewService {
 
         result.setMessage("리뷰 수정 성공");
         result.setReturnCode(MessageException.SUCCESS_CODE);
-        result.setData(rvReq.getReviewId());
+        ReviewResponse res = new ReviewResponse();
+        res.setReviewId(rvReq.getReviewId());
+        res.setUserId(rvReq.getUserId());
+        res.setPlaceId(rvReq.getPlaceId());
+        result.setData(res);
         return result;
 
     }
@@ -250,7 +238,7 @@ public class ReviewService {
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    private CommResponse<String> deleteReview(ReviewRequest rvReq, CommResponse<String> result) {
+    private CommResponse<ReviewResponse> deleteReview(ReviewRequest rvReq, CommResponse<ReviewResponse> result) {
         Optional<TrReview> optional = reviewRepository.findByUserIdAndPlaceIdAndUseYn(rvReq.getUserId(), rvReq.getPlaceId(), Boolean.TRUE);
         if(!optional.isPresent()){
             result.setMessage("작성한 리뷰가 없습니다.");
@@ -272,16 +260,17 @@ public class ReviewService {
             }
         }
 
-        // 포인트 회수
         List<TrAttach> attachList = attachRepository.findByReviewIdAndUserIdAndUseYn(rvReq.getReviewId(), rvReq.getUserId(), Boolean.TRUE);
+
+        // 포인트 회수
         int oldScore = 0;
-        if(trReview.getContents().length() > 1) oldScore++;
-        if(attachList.size() > 1) oldScore++;
+        if(trReview.getContents().length() > 0) oldScore++;
+        if(attachList.size() > 0) oldScore++;
         if(trReview.getFrstPlace()) oldScore++;
 
         if(oldScore > 0) {
             // 삭제 히스토리 추가
-            scoreRepository.save(mapperToTrScoreHis(rvReq, oldScore, "delete"));
+            scoreRepository.save(mapperToTrScoreHis(rvReq, oldScore, "DELETE"));
             Optional<TrUser> user = userRepository.findById(rvReq.getUserId());
             if(user.isPresent()){
                 TrUser newUser = user.get();
@@ -294,18 +283,13 @@ public class ReviewService {
 
         // 첨부파일 사용 안함으로 변경
         if(!CollectionUtils.isEmpty(attachList)){
-            attachList.stream()
-                    .map( attach ->{
-                        attach.setUseYn(Boolean.FALSE);
-                        return attach;
-                    })
-                    .collect(Collectors.toList());
-            attachRepository.saveAll(attachList);
+            deleteAttachList(attachList);
         }
 
-
         result.setMessage("리뷰 삭제 성공");
-        result.setData(rvReq.getReviewId());
+        ReviewResponse res = new ReviewResponse();
+        res.setUserId(rvReq.getUserId());
+        result.setData(res);
         result.setReturnCode(MessageException.SUCCESS_CODE);
         return result;
     }
@@ -329,6 +313,27 @@ public class ReviewService {
         return userScore;
     }
 
+    private int scoreAdd(ReviewRequest rvReq){
+        int newScore = 0;
+        if(rvReq.getContent().length() > 0){
+            newScore += CONTENT_SCORE;
+        }
+        if(rvReq.getAttachedPhotoIds().length > 0){
+            newScore += ATACH_SCORE;
+        }
+        scoreRepository.save(mapperToTrScoreHis(rvReq, newScore, "CONTENT"));
+        return newScore;
+    }
+
+    private void deleteAttachList(List<TrAttach> attachList){
+        attachList.stream()
+                .map( attach -> {
+                    attach.setUseYn(Boolean.FALSE);
+                    return attach;
+                })
+                .collect(Collectors.toList());
+        attachRepository.saveAll(attachList);
+    }
 
     private TrScoreHis mapperToTrScoreHis(ReviewRequest rvReq, Integer typeScore, String type){
         TrScoreHis trScoreHis = new TrScoreHis();

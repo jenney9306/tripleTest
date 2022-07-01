@@ -2,6 +2,7 @@ package com.triple.test.controller;
 
 import com.triple.test.dto.CommResponse;
 import com.triple.test.dto.ReviewRequest;
+import com.triple.test.dto.ReviewResponse;
 import com.triple.test.dto.UserScore;
 import com.triple.test.service.ReviewService;
 import io.swagger.annotations.Api;
@@ -21,7 +22,7 @@ public class ReviewController {
 
     @PostMapping("/events")
     public ResponseEntity<CommResponse> events(@RequestBody ReviewRequest reviewRequest) throws Exception{
-        CommResponse<String> response = reviewService.events(reviewRequest);
+        CommResponse<ReviewResponse> response = reviewService.events(reviewRequest);
         return new ResponseEntity(response, HttpStatus.OK);
     }
 
