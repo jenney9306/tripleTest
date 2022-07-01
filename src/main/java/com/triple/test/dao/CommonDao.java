@@ -1,14 +1,13 @@
 package com.triple.test.dao;
 
-import lombok.Getter;
 import lombok.Setter;
-import org.springframework.stereotype.Service;
 
 import javax.persistence.Column;
+import javax.persistence.MappedSuperclass;
 import java.util.Date;
 
-@Getter
 @Setter
+@MappedSuperclass
 public class CommonDao {
     @Column(name = "CATE_DATE",  nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록 날짜'")
     private Date createDate;

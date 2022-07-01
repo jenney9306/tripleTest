@@ -12,7 +12,7 @@ import javax.persistence.*;
 @Entity
 @NoArgsConstructor
 @Table(name = "TR_USER")
-public class TrUser extends CommonDao{
+public class TrUser {
     @Id
     @Column(name = "USER_ID", length = 36, nullable = false)
     private String userId;
