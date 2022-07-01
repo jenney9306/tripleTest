@@ -2,3 +2,57 @@
    $ docker pull mysql
 2. mysql docker 컨테이너를 실행해줍니다.
    $ docker run --name triple-project -e MYSQL_ROOT_PASSWORD=1234 -d -p 3306:3306 mysql:latest
+
+// DB 스키마 정보
+create table tr_attach (
+       seq integer not null auto_increment,
+        attached_id varchar(36) not null,
+        review_id varchar(36) not null,
+        use_yn char(1) not null,
+        user_id varchar(36) not null,
+        primary key (seq)
+    ) engine=InnoDB
+
+create table tr_place (
+       place_id varchar(36) not null,
+        primary key (place_id)
+    ) engine=InnoDB
+
+
+create table tr_review (
+       review_id varchar(36) not null,
+        cate_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록 날짜' not null,
+        cate_user varchar(36) not null,
+        mod_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '수정 날짜' not null,
+        mod_user varchar(36) not null,
+        contents varchar(300) not null,
+        frst_place char(1) not null,
+        place_id varchar(36) not null,
+        use_yn char(1) not null,
+        user_id varchar(36) not null,
+        primary key (review_id)
+    ) engine=InnoDB
+
+ create table tr_score_his (
+       seq integer not null auto_increment,
+        cate_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록 날짜' not null,
+        cate_user varchar(36) not null,
+        mod_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '수정 날짜' not null,
+        mod_user varchar(36) not null,
+        action varchar(10) not null,
+        place_id varchar(36) not null,
+        reason varchar(20),
+        review_id varchar(36) not null,
+        score integer not null,
+        user_id varchar(36) not null,
+        primary key (seq)
+    ) engine=InnoDB
+
+create table tr_user (
+        user_id varchar(36) not null,
+        score_sum integer not null,
+        primary key (user_id)
+    ) engine=InnoDB
+
+// tr_score_his index
+create index iUserId on tr_score_his (user_id)
