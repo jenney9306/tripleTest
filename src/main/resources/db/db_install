@@ -1,0 +1,4 @@
+1. docker 설치 후 docker를 통하여 mysql 최신버전을 설치해줍니다.
+   $ docker pull mysql
+2. mysql docker 컨테이너를 실행해줍니다.
+   $ docker run --name triple-project -e MYSQL_ROOT_PASSWORD=1234 -d -p 3306:3306 mysql:latest
